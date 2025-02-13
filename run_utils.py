@@ -40,6 +40,9 @@ def get_arguments():
     parser.add_argument('--filename', default='lora_weights', help='file name to save the lora weights (.pt extension will be added)')
     
     parser.add_argument('--eval_only', default=False, action='store_true', help='only evaluate the LoRA modules (save_path should not be None)')
+
+    parser.add_argument('--do_SAM', default=False, action='store_true', help='Use sharpness-aware minimization (SAM) optimizer')
+    parser.add_argument('--rho', default=0.05, type=float)
     args = parser.parse_args()
 
     return args

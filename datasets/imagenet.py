@@ -207,9 +207,9 @@ class ImageNet():
         if test_preprocess is None:
             test_preprocess = preprocess
         
-        self.train_x = datasets.ImageFolder(os.path.join(os.path.join(self.dataset_dir, 'train')), transform=train_preprocess)
-        self.val = datasets.ImageFolder(os.path.join(os.path.join(self.dataset_dir, 'train')), transform=preprocess)
-        self.test = datasets.ImageFolder(os.path.join(os.path.join(self.dataset_dir, 'val')), transform=test_preprocess)
+        self.train_x = datasets.ImageFolder(os.path.join(os.path.join(self.image_dir, 'train')), transform=train_preprocess)
+        self.val = datasets.ImageFolder(os.path.join(os.path.join(self.image_dir, 'train')), transform=preprocess)
+        self.test = datasets.ImageFolder(os.path.join(os.path.join(self.image_dir, 'val')), transform=test_preprocess)
         
         num_shots_val = min(4, num_shots)
         
