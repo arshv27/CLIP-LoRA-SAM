@@ -42,7 +42,9 @@ def get_arguments():
     parser.add_argument('--eval_only', default=False, action='store_true', help='only evaluate the LoRA modules (save_path should not be None)')
 
     parser.add_argument('--do_SAM', default=False, action='store_true', help='Use sharpness-aware minimization (SAM) optimizer')
-    parser.add_argument('--rho', default=0.05, type=float)
+    parser.add_argument('--adaptive', default=False, action='store_true', help='Use Adaptive sharpness-aware minimization (ASAM) optimizer')
+    parser.add_argument('--rho', default=0.05, type=float, help='Rho parameter for SAM')
+    parser.add_argument('--logfile', default='results.csv', help='file name to log results (default is results.csv)')
     args = parser.parse_args()
 
     return args
