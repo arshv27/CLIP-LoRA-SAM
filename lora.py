@@ -13,7 +13,7 @@ def evaluate_lora(args, clip_model, loader, dataset):
     with torch.no_grad():
         template = dataset.template[0] 
         texts = [template.format(classname.replace('_', ' ')) for classname in dataset.classnames]
-        with torch.amp.autocast(device_type="cuda", dtype=torch.float32):
+        with torch.amp.autocast(device_type="cuda", dtype=torch.float16):
             texts = clip.tokenize(texts).cuda()
             class_embeddings = clip_model.encode_text(texts)
         text_features = class_embeddings/class_embeddings.norm(dim=-1, keepdim=True)
@@ -23,7 +23,7 @@ def evaluate_lora(args, clip_model, loader, dataset):
     with torch.no_grad():
         for i, (images, target) in enumerate(loader):
             images, target = images.cuda(), target.cuda()
-            with torch.amp.autocast(device_type="cuda", dtype=torch.float32):
+            with torch.amp.autocast(device_type="cuda", dtype=torch.float16):
                 image_features = clip_model.encode_image(images)
             image_features = image_features/image_features.norm(dim=-1, keepdim=True)
             cosine_similarity = image_features @ text_features.t()
@@ -69,6 +69,8 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
         load_lora(args, list_lora_layers)
         acc_test = evaluate_lora(args, clip_model, test_loader, dataset)
         print("**** Test accuracy: {:.2f}. ****\n".format(acc_test))
+        with open(args.logfile, "a") as f1:
+            f1.write(f"{args.dataset},{args.shots},{args.seed},{args.rho},{acc_test}\n")
         return
 
     mark_only_lora_as_trainable(clip_model)
@@ -76,7 +78,7 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
     
     if args.do_SAM:
         base_optimizer = torch.optim.AdamW
-        optimizer = SAM(get_lora_parameters(clip_model), base_optimizer, args.rho, weight_decay=1e-2, betas=(0.9, 0.999), lr=args.lr)
+        optimizer = SAM(get_lora_parameters(clip_model), base_optimizer, args.rho, args.adaptive, weight_decay=1e-2, betas=(0.9, 0.999), lr=args.lr)
     else:
         optimizer = torch.optim.AdamW(get_lora_parameters(clip_model), weight_decay=1e-2, betas=(0.9, 0.999), lr=args.lr)
         
@@ -102,17 +104,17 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
             texts = [template.format(classname.replace('_', ' ')) for classname in dataset.classnames]
             images, target = images.cuda(), target.cuda()
             if args.encoder == 'text' or args.encoder == 'both':
-                with torch.amp.autocast(device_type="cuda", dtype=torch.float32):
+                with torch.amp.autocast(device_type="cuda", dtype=torch.float16):
                     texts = clip.tokenize(texts).cuda()
                     class_embeddings = clip_model.encode_text(texts)
                 text_features = class_embeddings/class_embeddings.norm(dim=-1, keepdim=True)
                 
             if args.encoder == 'vision' or args.encoder == 'both':
-                with torch.amp.autocast(device_type="cuda", dtype=torch.float32):
+                with torch.amp.autocast(device_type="cuda", dtype=torch.float16 ):
                     image_features = clip_model.encode_image(images)
             else:
                 with torch.no_grad():
-                    with torch.amp.autocast(device_type="cuda", dtype=torch.float32):
+                    with torch.amp.autocast(device_type="cuda", dtype=torch.float16):
                         image_features = clip_model.encode_image(images)
             image_features = image_features/image_features.norm(dim=-1, keepdim=True)
             
@@ -129,7 +131,7 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
                 # scaler.unscale_(optimizer)
                 optimizer.first_step(zero_grad=True)
 
-                with torch.amp.autocast(device_type="cuda", dtype=torch.float32):
+                with torch.amp.autocast(device_type="cuda", dtype=torch.float16):
                     image_features = clip_model.encode_image(images)
                     image_features = image_features / image_features.norm(dim=-1, keepdim=True)
 
@@ -176,6 +178,8 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
     
     acc_test = evaluate_lora(args, clip_model, test_loader, dataset)
     print("**** Final test accuracy: {:.2f}. ****\n".format(acc_test))
+    with open(args.logfile, "a") as f1:
+        f1.write(f"{args.dataset},{args.shots},{args.seed},{args.rho},{acc_test}\n")
     
     if args.save_path != None:
         save_lora(args, list_lora_layers)
